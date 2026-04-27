@@ -67,10 +67,19 @@ jobs:
         env:
           EXPLICIT_TAG: ${{ inputs.releaseTag }}
           BUMP_TYPE: ${{ inputs.bumpType || 'patch' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # --- Find the latest existing v* tag ---
-          LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1)
-          echo "Latest existing tag: ${LATEST_TAG:-<none>}"
+          # --- Find the latest published GitHub Release tag ---          
+          LATEST_RELEASE_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
+
+          if [ -n "$LATEST_RELEASE_TAG" ]; then
+            LATEST_TAG="$LATEST_RELEASE_TAG"
+            echo "Latest published GitHub Release tag: $LATEST_TAG"
+          else
+            # Fallback to git tags when no GitHub Releases exist yet
+            LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1)
+            echo "No GitHub Releases found, falling back to latest git tag: ${LATEST_TAG:-<none>}"
+          fi
 
           if [ -n "$EXPLICIT_TAG" ]; then
             # Validate explicit tag format
