@@ -11,6 +11,14 @@
 
 set -euo pipefail
 
+# Verify required dependencies are available.
+for cmd in curl jq; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "Error: '$cmd' is required but not found in PATH." >&2
+    exit 1
+  fi
+done
+
 REGISTRY="ghcr.io"
 REPO="ggml-org/llama.cpp"
 
@@ -91,17 +99,24 @@ ghcr_fetch_all_tags() {
 
   while [ -n "$url" ] && [ "$page" -lt 50 ]; do
     page=$((page + 1))
-    local response
-    response=$(curl -si -H "Authorization: Bearer $token" "$url" 2>&1)
 
-    # Body is the last line of the curl -si output.
+    # Use -D to dump headers to a temp file so that the body (which may
+    # span multiple lines) is cleanly captured from stdout.
+    local header_file
+    header_file=$(mktemp)
     local body
-    body=$(echo "$response" | tail -1)
+    body=$(curl -sS -D "$header_file" -H "Authorization: Bearer $token" "$url") || {
+      rm -f "$header_file"
+      echo "Error: failed to fetch tags from $url" >&2
+      return 1
+    }
+
     echo "$body" | jq -r '.tags[]'
 
     # Follow the Link header for the next page, if any.
     local link
-    link=$(echo "$response" | grep -i '^link:' | sed 's/.*<\(.*\)>.*/\1/' || true)
+    link=$(grep -i '^link:' "$header_file" | sed 's/.*<\(.*\)>.*/\1/' | tr -d '\r' || true)
+    rm -f "$header_file"
     if [ -n "$link" ]; then
       url="https://${REGISTRY}${link}"
     else
