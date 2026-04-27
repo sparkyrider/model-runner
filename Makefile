@@ -10,6 +10,7 @@ DOCKER_IMAGE_SGLANG := docker/model-runner:latest-sglang
 DOCKER_TARGET ?= final-llamacpp
 PORT := 8080
 LLAMA_ARGS ?=
+E2E_TIMEOUT ?= 30m
 DOCKER_BUILD_ARGS := \
 	--load \
 	--platform linux/$(shell docker version --format '{{.Server.Arch}}') \
@@ -95,7 +96,7 @@ e2e:
 		echo "$$INVALID_TESTS" | sed 's/.*func \([^(]*\).*/\1/'; \
 		exit 1; \
 	fi
-	go test -v -count=1 -tags=e2e -run "^TestE2E" -timeout=30m ./e2e/
+	go test -v -count=1 -tags=e2e -run "^TestE2E" -timeout=$(E2E_TIMEOUT) ./e2e/
 	@echo "E2E tests completed!"
 
 test-docker-ce-installation:

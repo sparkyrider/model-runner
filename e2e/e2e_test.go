@@ -5,7 +5,8 @@
 //
 // Run with:
 //
-//	go test -v -count=1 -tags=e2e -timeout=30m ./e2e/
+//	make e2e                          # uses E2E_TIMEOUT from Makefile (default 30m)
+//	make e2e E2E_TIMEOUT=45m          # override for slower machines
 package e2e
 
 import (

@@ -19,6 +19,8 @@ jobs:
           - os: macos-latest
           - os: ubuntu-latest
     runs-on: ${{ matrix.os }}
+    # Must exceed the Go test timeout (E2E_TIMEOUT in the Makefile, currently
+    # 30 min) to allow for setup steps (checkout, Go/Rust toolchain, build).
     timeout-minutes: 45
 
     steps:
