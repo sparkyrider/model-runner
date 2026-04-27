@@ -5,7 +5,7 @@
 //
 // Run with:
 //
-//	go test -v -count=1 -tags=e2e -timeout=15m ./e2e/
+//	go test -v -count=1 -tags=e2e -timeout=30m ./e2e/
 package e2e
 
 import (

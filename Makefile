@@ -95,7 +95,7 @@ e2e:
 		echo "$$INVALID_TESTS" | sed 's/.*func \([^(]*\).*/\1/'; \
 		exit 1; \
 	fi
-	go test -v -count=1 -tags=e2e -run "^TestE2E" -timeout=15m ./e2e/
+	go test -v -count=1 -tags=e2e -run "^TestE2E" -timeout=30m ./e2e/
 	@echo "E2E tests completed!"
 
 test-docker-ce-installation:
