@@ -19,7 +19,9 @@ jobs:
           - os: macos-latest
           - os: ubuntu-latest
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    # Must exceed the Go test timeout (E2E_TIMEOUT in the Makefile, currently
+    # 30 min) to allow for setup steps (checkout, Go/Rust toolchain, build).
+    timeout-minutes: 45
 
     steps:
       - name: Checkout code
@@ -39,7 +41,7 @@ jobs:
 
       - name: Set up Docker
         if: matrix.os == 'ubuntu-latest'
-        uses: docker/setup-docker-action@1a6edb0ba9ac496f6850236981f15d8f9a82254d
+        uses: docker/setup-docker-action@b2189fbf2a6592b51fee7cdd93ee2bfaeba733db
 
       - name: Install build dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'

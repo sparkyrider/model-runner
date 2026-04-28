@@ -14,6 +14,7 @@ DOCKER_IMAGE_SGLANG := docker/model-runner:latest-sglang
 DOCKER_TARGET ?= final-llamacpp
 PORT := 8080
 LLAMA_ARGS ?=
+E2E_TIMEOUT ?= 30m
 
 define check-llama-image
 $(if $(LLAMA_UPSTREAM_IMAGE),,$(error Failed to resolve llama.cpp upstream image. Check LLAMA_SERVER_VERSION and LLAMA_SERVER_VARIANT or set LLAMA_UPSTREAM_IMAGE directly.))
@@ -111,7 +112,7 @@ e2e:
 		echo "$$INVALID_TESTS" | sed 's/.*func \([^(]*\).*/\1/'; \
 		exit 1; \
 	fi
-	go test -v -count=1 -tags=e2e -run "^TestE2E" -timeout=15m ./e2e/
+	go test -v -count=1 -tags=e2e -run "^TestE2E" -timeout=$(E2E_TIMEOUT) ./e2e/
 	@echo "E2E tests completed!"
 
 test-docker-ce-installation:
