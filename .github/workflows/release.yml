@@ -67,10 +67,26 @@ jobs:
         env:
           EXPLICIT_TAG: ${{ inputs.releaseTag }}
           BUMP_TYPE: ${{ inputs.bumpType || 'patch' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # --- Find the latest existing v* tag ---
-          LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1)
-          echo "Latest existing tag: ${LATEST_TAG:-<none>}"
+          # --- Find the latest published GitHub Release tag ---
+          # Using gh release list instead of git tags ensures we reference the
+          # last *successfully published* release, not an orphan tag left behind
+          # by a failed release workflow run.
+          # - Filter to v* tags only (aligned with the git tag fallback)
+          # - Use jq's // operator to handle empty arrays (avoids literal "null")
+          LATEST_RELEASE_TAG=$(gh release list --limit 100 --json tagName \
+            --jq '[.[] | select(.tagName | startswith("v"))] | sort_by(.tagName) | last | .tagName // ""' \
+            2>/dev/null || echo "")
+
+          if [ -n "$LATEST_RELEASE_TAG" ]; then
+            LATEST_TAG="$LATEST_RELEASE_TAG"
+            echo "Latest published GitHub Release tag: $LATEST_TAG"
+          else
+            # Fallback to git tags when no GitHub Releases exist yet
+            LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1)
+            echo "No GitHub Releases found, falling back to latest git tag: ${LATEST_TAG:-<none>}"
+          fi
 
           if [ -n "$EXPLICIT_TAG" ]; then
             # Validate explicit tag format
