@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Install additional system packages on top of the upstream llama.cpp image.
+#
+# The upstream image already ships GPU libraries (Vulkan, CUDA, ROCm) and
+# libgomp1, so we only need:
+#   - ca-certificates  (for HTTPS model downloads)
+#   - mesa patches     (aarch64 + cpu variant only — Docker Desktop virtio-vulkan)
+
 enable_source_repos() {
   # DEB822 format (Ubuntu 24.04+)
   for f in /etc/apt/sources.list.d/*.sources; do
@@ -41,16 +48,12 @@ main() {
   set -eux -o pipefail
 
   apt-get update
-  # libgomp1 is the OpenMP runtime required by the upstream llama.cpp CPU
-  # backend plugins (libggml-cpu-*.so) which are compiled with -fopenmp.
-  local packages=("ca-certificates" "libgomp1")
-  if [ "$LLAMA_SERVER_VARIANT" = "cpu" ]; then
-    packages+=("libvulkan1")
-    if [ "$(uname -m)" = "aarch64" ]; then
-      rebuild_and_install_mesa
-    else
-      packages+=("mesa-vulkan-drivers")
-    fi
+  local packages=("ca-certificates")
+
+  # On aarch64 CPU (Vulkan) builds, rebuild mesa with Docker Desktop
+  # virtio-vulkan patches.
+  if [ "$LLAMA_SERVER_VARIANT" = "cpu" ] && [ "$(uname -m)" = "aarch64" ]; then
+    rebuild_and_install_mesa
   fi
 
   apt-get install -y "${packages[@]}"

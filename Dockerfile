@@ -5,10 +5,6 @@ ARG LLAMA_SERVER_VERSION=b8882
 ARG LLAMA_SERVER_VARIANT=cpu
 ARG LLAMA_UPSTREAM_IMAGE=ghcr.io/ggml-org/llama.cpp:server-vulkan-b8882
 
-# Use 26.04 for the default Vulkan-backed Linux image.
-# GPU variants should pair this with a compatible runtime base image.
-ARG BASE_IMAGE=ubuntu:26.04
-
 ARG VERSION=dev
 
 FROM docker.io/library/golang:${GO_VERSION}-bookworm AS builder
@@ -43,11 +39,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=1 GOOS=linux go build -tags=novllm -ldflags="-s -w -X main.Version=${VERSION}" -o model-runner .
 
-# --- Get llama.cpp binary ---
-FROM ${LLAMA_UPSTREAM_IMAGE} AS llama-server
-
-# --- Final image ---
-FROM docker.io/${BASE_IMAGE} AS llamacpp
+# --- Final image: directly FROM the upstream llama.cpp image ---
+FROM ${LLAMA_UPSTREAM_IMAGE} AS llamacpp
 
 ARG LLAMA_SERVER_VARIANT
 
@@ -57,7 +50,8 @@ RUN groupadd --system modelrunner && useradd --system --gid modelrunner -G video
 
 COPY scripts/ /scripts/
 
-# Install ca-certificates for HTTPS and vulkan
+# Install additional packages not shipped by the upstream image
+# (e.g. ca-certificates for HTTPS, mesa patches for aarch64 virtio-vulkan).
 RUN /scripts/apt-install.sh && rm -rf /scripts
 
 WORKDIR /app
@@ -66,29 +60,6 @@ WORKDIR /app
 RUN mkdir -p /var/run/model-runner /models && \
     chown -R modelrunner:modelrunner /var/run/model-runner /app /models && \
     chmod -R 755 /models
-
-# Copy the upstream llama.cpp /app layout as-is.  The Go binary-resolver
-# (resolveLlamaServerBin) discovers "llama-server" automatically when the
-# Docker-convention "com.docker.llama-server" is absent.
-COPY --from=llama-server /app/ /app/
-
-# Verify that every shared library copied from the upstream image can resolve
-# its runtime dependencies.  This catches missing system packages (e.g.
-# libgomp1) at build time instead of letting them surface as cryptic
-# "no CPU backend found" errors at runtime.
-RUN set -e; missing=""; \
-    export LD_LIBRARY_PATH=/app; \
-    for f in /app/llama-server /app/*.so; do \
-      out=$(ldd "$f" 2>&1) || true; \
-      not_found=$(echo "$out" | grep "not found" || true); \
-      if [ -n "$not_found" ]; then \
-        missing="$missing\n$f:\n$not_found"; \
-      fi; \
-    done; \
-    if [ -n "$missing" ]; then \
-      printf "ERROR: unresolved shared-library dependencies:\n%b\n" "$missing" >&2; \
-      exit 1; \
-    fi
 
 USER modelrunner
 

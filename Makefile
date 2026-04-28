@@ -7,7 +7,6 @@ LLAMA_SERVER_VARIANT := cpu
 LLAMA_UPSTREAM_IMAGE ?= $(shell \
 	bash scripts/resolve-llama-upstream-image.sh \
 	"$(LLAMA_SERVER_VERSION)" "$(LLAMA_SERVER_VARIANT)")
-VLLM_BASE_IMAGE := nvidia/cuda:13.0.2-runtime-ubuntu24.04
 DOCKER_IMAGE := docker/model-runner:latest
 DOCKER_IMAGE_VLLM := docker/model-runner:latest-vllm-cuda
 DOCKER_IMAGE_SGLANG := docker/model-runner:latest-sglang
@@ -34,7 +33,6 @@ DOCKER_BUILD_COMMON_ARGS = \
 	--build-arg LLAMA_SERVER_VARIANT=$(LLAMA_SERVER_VARIANT) \
 	--build-arg LLAMA_UPSTREAM_IMAGE=$(LLAMA_UPSTREAM_IMAGE) \
 	--build-arg SGLANG_VERSION=$(SGLANG_VERSION) \
-	--build-arg BASE_IMAGE=$(BASE_IMAGE) \
 	--build-arg VLLM_VERSION='$(VLLM_VERSION)' \
 	--target $(DOCKER_TARGET) \
 	-t $(DOCKER_IMAGE)
@@ -118,7 +116,7 @@ e2e:
 test-docker-ce-installation:
 	@echo "Testing Docker CE installation..."
 	@echo "Note: This requires Docker to be running"
-	BASE_IMAGE=$(BASE_IMAGE) scripts/test-docker-ce-installation.sh
+	scripts/test-docker-ce-installation.sh
 
 validate:
 	find . -type f -name "*.sh" | grep -v "pkg/go-containerregistry\|llamacpp/native/vendor" | xargs shellcheck
@@ -187,8 +185,7 @@ docker-build-vllm:
 	@$(MAKE) docker-build \
 		DOCKER_TARGET=final-vllm \
 		DOCKER_IMAGE=$(DOCKER_IMAGE_VLLM) \
-		LLAMA_SERVER_VARIANT=cuda \
-		BASE_IMAGE=$(VLLM_BASE_IMAGE)
+		LLAMA_SERVER_VARIANT=cuda
 
 # Run vLLM Docker container with TCP port access and mounted model storage
 docker-run-vllm: docker-build-vllm
@@ -199,8 +196,7 @@ docker-build-sglang:
 	@$(MAKE) docker-build \
 		DOCKER_TARGET=final-sglang \
 		DOCKER_IMAGE=$(DOCKER_IMAGE_SGLANG) \
-		LLAMA_SERVER_VARIANT=cuda \
-		BASE_IMAGE=$(VLLM_BASE_IMAGE)
+		LLAMA_SERVER_VARIANT=cuda
 
 # Run SGLang Docker container with TCP port access and mounted model storage
 docker-run-sglang: docker-build-sglang
